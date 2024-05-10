@@ -1,34 +1,61 @@
 const gulp = require("gulp");
 const sass = require("gulp-sass")(require("sass"));
+const sourcemaps = require("gulp-sourcemaps");
+const uglify = require("gulp-uglify");
+const obfuscate = require("gulp-obfuscate");
+const imagemin = require("gulp-imagemin");
+
+function comprimeImagem() {
+    return gulp
+        .src("./source/images/*")
+        .pipe(
+            imagemin([
+                imagemin.gifsicle({ interlaced: true }),
+                imagemin.mozjpeg({ quality: 75, progressive: true }),
+                imagemin.optipng({ optimizationLevel: 5 }),
+                imagemin.svgo({
+                    plugins: [{ removeViewBox: true }, { cleanupIDs: false }],
+                }),
+            ])
+        )
+        .pipe(gulp.dest("./build/images"));
+}
+
+function comprimeJavaScript() {
+    return gulp
+        .src("./source/scripts/*.js")
+        .pipe(uglify())
+        .pipe(obfuscate())
+        .pipe(gulp.dest("./build/scripts"));
+}
 
 function compilaSass() {
     return gulp
         .src("./source/styles/main.scss")
+        .pipe(sourcemaps.init())
         .pipe(
             sass({
                 outputStyle: "compressed",
             })
         )
-        .pipe(gulp.dest("./build/styles"));
+        .pipe(sourcemaps.write("./maps"))
+        .pipe(gulp.dest("./build/styles/main.css"));
 }
 
-function funcaoPadrao(callBack) {
-    setTimeout(function () {
-        console.log("Executando via Gulp");
-        callBack();
-    }, 3000);
-}
-
-function dizOi(callBack) {
-    console.log("Olá, Gulp!");
-    dizTchau();
-    callBack();
-}
-
-function dizTchau() {
-    console.log("Tchau, Gulp!");
-}
-
-exports.default = gulp.series(funcaoPadrao, dizOi);
-exports.dizOi = dizOi;
-exports.sass = compilaSass;
+exports.default = function () {
+    gulp.watch(
+        "./source/styles/*.scss",
+        { ignoreInitial: false },
+        gulp.series(compilaSass)
+    );
+    gulp.watch(
+        "./source/scripts/*.js",
+        { ignoreInitial: false },
+        gulp.series(comprimeJavaScript)
+    );
+    gulp.watch(
+        "./source/images/*",
+        { ignoreInitial: false },
+        gulp.series(comprimeImagem)
+    );
+};
